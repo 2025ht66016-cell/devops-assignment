@@ -1,6 +1,10 @@
-from flask import Flask, jsonify, render_template_string, request
+import io
 
-from src.Aceestver import calculate_calories, get_program_by_code, get_programs_summary
+from flask import Flask, jsonify, render_template_string, request, send_file
+
+from src.Aceestver import (add_client, calculate_calories, get_clients,
+                            get_clients_csv, get_program_by_code,
+                            get_programs_summary)
 
 
 def create_app() -> Flask:
@@ -139,6 +143,72 @@ def create_app() -> Flask:
             return jsonify({"error": f"Program '{program_code}' was not found."}), 404
 
         return jsonify({"program_code": program_code.upper(), "weight_kg": weight_kg, "estimated_calories": result}), 200
+
+    @app.post("/api/clients")
+    def create_client() -> tuple:
+        body = request.get_json(silent=True) or {}
+        name = body.get("name", "").strip()
+        program_code = body.get("program_code", "")
+        age = body.get("age")
+        weight_kg = body.get("weight_kg")
+        adherence = body.get("adherence", 0)
+        notes = body.get("notes", "")
+
+        if not name or not program_code or age is None or weight_kg is None:
+            return jsonify({"error": "name, program_code, age, and weight_kg are required."}), 400
+
+        record = add_client(name, age, weight_kg, program_code, adherence, notes)
+        if record is None:
+            return jsonify({"error": f"Program '{program_code}' was not found."}), 404
+
+        return jsonify(record), 201
+
+    @app.get("/api/clients")
+    def list_clients() -> tuple:
+        return jsonify({"clients": get_clients(), "total": len(get_clients())}), 200
+
+    @app.get("/api/clients/export.csv")
+    def export_clients_csv():
+        csv_data = get_clients_csv()
+        return send_file(
+            io.BytesIO(csv_data.encode()),
+            mimetype="text/csv",
+            as_attachment=True,
+            download_name="clients.csv",
+        )
+
+    @app.get("/api/chart")
+    def adherence_chart():
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        clients = get_clients()
+        if not clients:
+            return jsonify({"error": "No clients to chart."}), 404
+
+        names = [c["name"] for c in clients]
+        adherence = [c["adherence"] for c in clients]
+        colors = ["#e74c3c" if c["program_code"] == "FL"
+                  else "#2ecc71" if c["program_code"] == "MG"
+                  else "#3498db" for c in clients]
+
+        fig, ax = plt.subplots(figsize=(max(6, len(names)), 4))
+        ax.bar(names, adherence, color=colors)
+        ax.set_ylabel("Adherence %")
+        ax.set_ylim(0, 100)
+        ax.set_title("Client Weekly Adherence")
+        ax.set_facecolor("#1a1a1a")
+        fig.patch.set_facecolor("#1a1a1a")
+        ax.tick_params(colors="white")
+        ax.yaxis.label.set_color("white")
+        ax.title.set_color("#d4af37")
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight")
+        plt.close(fig)
+        buf.seek(0)
+        return send_file(buf, mimetype="image/png")
 
     return app
 

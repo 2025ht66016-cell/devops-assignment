@@ -54,3 +54,46 @@ def calculate_calories(program_code: str, weight_kg: float) -> int | None:
     if program is None:
         return None
     return int(weight_kg * program["calorie_factor"])
+
+
+# ── v1.1.2: in-memory client store ────────────────────────────────────────────
+
+_CLIENTS: list[dict] = []
+
+
+def add_client(name: str, age: int, weight_kg: float, program_code: str,
+               adherence: int, notes: str = "") -> dict | None:
+    """Add a client record. Returns the record or None if program is invalid."""
+    if get_program_by_code(program_code) is None:
+        return None
+    record = {
+        "name": name,
+        "age": age,
+        "weight_kg": weight_kg,
+        "program_code": program_code.upper(),
+        "adherence": max(0, min(100, adherence)),
+        "notes": notes,
+    }
+    _CLIENTS.append(record)
+    return record
+
+
+def get_clients() -> list[dict]:
+    return list(_CLIENTS)
+
+
+def get_clients_csv() -> str:
+    """Return all clients as a CSV string."""
+    import csv
+    import io
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["name", "age", "weight_kg", "program_code",
+                                              "adherence", "notes"])
+    writer.writeheader()
+    writer.writerows(_CLIENTS)
+    return buf.getvalue()
+
+
+def clear_clients() -> None:
+    """Clear all clients (used in tests)."""
+    _CLIENTS.clear()
