@@ -1,7 +1,8 @@
 import pytest
 
 from app import create_app
-from src.Aceestver import calculate_calories, get_program_by_code, get_programs_summary
+from src.Aceestver import (calculate_calories, clear_clients, get_program_by_code,
+                            get_programs_summary)
 
 
 # ── business logic ────────────────────────────────────────────────────────────
@@ -95,4 +96,67 @@ def test_calories_endpoint_missing_fields_returns_400(client):
 
 def test_calories_endpoint_unknown_program_returns_404(client):
     response = client.post("/api/calories", json={"program_code": "XX", "weight_kg": 70})
+    assert response.status_code == 404
+
+
+# ── v1.1.2: client management ─────────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def reset_clients():
+    """Wipe in-memory client list before every test."""
+    clear_clients()
+    yield
+    clear_clients()
+
+
+def test_add_client_returns_201(client):
+    response = client.post("/api/clients", json={
+        "name": "Ravi", "age": 28, "weight_kg": 75, "program_code": "FL", "adherence": 80
+    })
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["name"] == "Ravi"
+    assert payload["program_code"] == "FL"
+    assert payload["adherence"] == 80
+
+
+def test_add_client_missing_fields_returns_400(client):
+    response = client.post("/api/clients", json={"name": "Ravi"})
+    assert response.status_code == 400
+
+
+def test_add_client_unknown_program_returns_404(client):
+    response = client.post("/api/clients", json={
+        "name": "Ravi", "age": 28, "weight_kg": 75, "program_code": "XX", "adherence": 50
+    })
+    assert response.status_code == 404
+
+
+def test_list_clients_returns_all(client):
+    client.post("/api/clients", json={"name": "A", "age": 20, "weight_kg": 60, "program_code": "BG", "adherence": 70})
+    client.post("/api/clients", json={"name": "B", "age": 25, "weight_kg": 80, "program_code": "MG", "adherence": 90})
+    response = client.get("/api/clients")
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["total"] == 2
+    assert payload["clients"][0]["name"] == "A"
+
+
+def test_export_csv_returns_csv_file(client):
+    client.post("/api/clients", json={"name": "Priya", "age": 30, "weight_kg": 65, "program_code": "FL", "adherence": 75})
+    response = client.get("/api/clients/export.csv")
+    assert response.status_code == 200
+    assert "text/csv" in response.content_type
+    assert b"Priya" in response.data
+
+
+def test_chart_returns_png(client):
+    client.post("/api/clients", json={"name": "Karan", "age": 22, "weight_kg": 70, "program_code": "MG", "adherence": 85})
+    response = client.get("/api/chart")
+    assert response.status_code == 200
+    assert response.content_type == "image/png"
+
+
+def test_chart_with_no_clients_returns_404(client):
+    response = client.get("/api/chart")
     assert response.status_code == 404
