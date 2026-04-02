@@ -1,3 +1,8 @@
+import csv
+import io
+import os
+import sqlite3
+
 PROGRAMS = {
     "FL": {
         "code": "FL",
@@ -57,11 +62,6 @@ def calculate_calories(program_code: str, weight_kg: float) -> int | None:
 
 
 # ── v2.0.1: SQLite-backed client store ────────────────────────────────────────
-
-import csv
-import io
-import os
-import sqlite3
 
 _DB_PATH = os.environ.get("DB_PATH", "aceest_fitness.db")
 

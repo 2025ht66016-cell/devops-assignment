@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from app import create_app
-from src.Aceestver import (calculate_calories, clear_clients, get_program_by_code,
+from src.Aceestver import (calculate_calories, get_program_by_code,
                             get_programs_summary, init_db)
 
 
