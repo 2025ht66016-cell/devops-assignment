@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'aceest-fitness'
-        PYTHON_BIN = 'python3'
+        PYTHON_BIN = 'python'
     }
 
     stages {
@@ -20,9 +20,9 @@ pipeline {
 
         stage('Setup Environment') {
             steps {
-                sh '''
-                    ${PYTHON_BIN} -m venv .venv
-                    . .venv/bin/activate
+                bat '''
+                    %PYTHON_BIN% -m venv .venv
+                    call .venv\\Scripts\\activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -31,8 +31,8 @@ pipeline {
 
         stage('Lint & Build Validation') {
             steps {
-                sh '''
-                    . .venv/bin/activate
+                bat '''
+                    call .venv\\Scripts\\activate
                     python -m compileall app.py src tests
                     ruff check app.py src tests
                 '''
@@ -41,8 +41,8 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
-                sh '''
-                    . .venv/bin/activate
+                bat '''
+                    call .venv\\Scripts\\activate
                     pytest --junitxml=pytest-report.xml
                 '''
             }
@@ -51,11 +51,11 @@ pipeline {
         stage('Docker Build') {
             when {
                 expression {
-                    sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
+                    bat(script: 'where docker', returnStatus: true) == 0
                 }
             }
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .'
+                bat 'docker build -t %IMAGE_NAME%:%BUILD_NUMBER% .'
             }
         }
     }
