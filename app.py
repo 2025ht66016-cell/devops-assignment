@@ -4,11 +4,12 @@ from flask import Flask, jsonify, render_template_string, request, send_file
 
 from src.Aceestver import (add_client, calculate_calories, get_clients,
                             get_clients_csv, get_program_by_code,
-                            get_programs_summary)
+                            get_programs_summary, init_db)
 
 
-def create_app() -> Flask:
+def create_app(db_path: str | None = None) -> Flask:
     app = Flask(__name__)
+    init_db(db_path)
 
     @app.get("/")
     def index() -> str:
