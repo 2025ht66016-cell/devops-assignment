@@ -65,5 +65,17 @@ pipeline {
             junit allowEmptyResults: true, testResults: 'pytest-report.xml'
             cleanWs deleteDirs: true, disableDeferredWipeout: true
         }
+        success {
+            githubNotify context: 'Jenkins CI',
+                         description: 'All stages passed',
+                         status: 'SUCCESS',
+                         credentialsId: 'github-token'
+        }
+        failure {
+            githubNotify context: 'Jenkins CI',
+                         description: 'Build failed',
+                         status: 'FAILURE',
+                         credentialsId: 'github-token'
+        }
     }
 }
