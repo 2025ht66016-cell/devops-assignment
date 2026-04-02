@@ -1,8 +1,11 @@
+import os
+import tempfile
+
 import pytest
 
 from app import create_app
-from src.Aceestver import (calculate_calories, clear_clients, get_program_by_code,
-                            get_programs_summary)
+from src.Aceestver import (calculate_calories, get_program_by_code,
+                            get_programs_summary, init_db)
 
 
 # ── business logic ────────────────────────────────────────────────────────────
@@ -50,8 +53,8 @@ def test_calculate_calories_zero_weight_returns_none():
 # ── API endpoints ─────────────────────────────────────────────────────────────
 
 @pytest.fixture
-def client():
-    return create_app().test_client()
+def client(tmp_db):
+    return create_app(db_path=tmp_db).test_client()
 
 
 def test_health_endpoint_returns_ok_status(client):
@@ -99,14 +102,21 @@ def test_calories_endpoint_unknown_program_returns_404(client):
     assert response.status_code == 404
 
 
-# ── v1.1.2: client management ─────────────────────────────────────────────────
+# ── v2.0.1: SQLite client management ─────────────────────────────────────────
 
-@pytest.fixture(autouse=True)
-def reset_clients():
-    """Wipe in-memory client list before every test."""
-    clear_clients()
-    yield
-    clear_clients()
+@pytest.fixture
+def tmp_db():
+    """Provide a fresh temporary SQLite database for each test."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    init_db(path)
+    # Point the module-level _DB_PATH to this temp file
+    import src.Aceestver as ace
+    original = ace._DB_PATH
+    ace._DB_PATH = path
+    yield path
+    ace._DB_PATH = original
+    os.unlink(path)
 
 
 def test_add_client_returns_201(client):
