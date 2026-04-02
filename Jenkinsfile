@@ -69,22 +69,26 @@ pipeline {
             cleanWs deleteDirs: true, disableDeferredWipeout: true
         }
         success {
-            githubNotify context: 'Jenkins CI',
-                         description: 'All stages passed',
-                         status: 'SUCCESS',
-                         credentialsId: 'github-token',
-                         sha: env.GIT_COMMIT_SHA,
-                         repo: 'devops-assignment',
-                         account: '2025ht66016-cell'
+            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                githubNotify context: 'Jenkins CI',
+                             description: 'All stages passed',
+                             status: 'SUCCESS',
+                             credentialsId: 'github-token',
+                             sha: env.GIT_COMMIT_SHA,
+                             repo: 'devops-assignment',
+                             account: '2025ht66016-cell'
+            }
         }
         failure {
-            githubNotify context: 'Jenkins CI',
-                         description: 'Build failed',
-                         status: 'FAILURE',
-                         credentialsId: 'github-token',
-                         sha: env.GIT_COMMIT_SHA,
-                         repo: 'devops-assignment',
-                         account: '2025ht66016-cell'
+            catchError(buildResult: 'FAILURE', stageResult: 'UNSTABLE') {
+                githubNotify context: 'Jenkins CI',
+                             description: 'Build failed',
+                             status: 'FAILURE',
+                             credentialsId: 'github-token',
+                             sha: env.GIT_COMMIT_SHA,
+                             repo: 'devops-assignment',
+                             account: '2025ht66016-cell'
+            }
         }
     }
 }
