@@ -4,7 +4,8 @@ from flask import Flask, jsonify, render_template_string, request, send_file
 
 from src.Aceestver import (add_client, calculate_calories, get_clients,
                             get_clients_csv, get_program_by_code,
-                            get_programs_summary, init_db)
+                            get_programs_summary, init_db,
+                            log_progress, get_progress)
 
 
 def create_app(db_path: str | None = None) -> Flask:
@@ -210,6 +211,28 @@ def create_app(db_path: str | None = None) -> Flask:
         plt.close(fig)
         buf.seek(0)
         return send_file(buf, mimetype="image/png")
+
+    # ── v2.1.2: Progress / session tracking ──────────────────────────────────
+
+    @app.post("/api/progress")
+    def create_progress() -> tuple:
+        body = request.get_json(silent=True) or {}
+        client_name = body.get("client_name", "").strip()
+        adherence = body.get("adherence")
+        week = body.get("week")  # optional — defaults to current week
+
+        if not client_name or adherence is None:
+            return jsonify({"error": "client_name and adherence are required."}), 400
+
+        record = log_progress(client_name, int(adherence), week)
+        return jsonify(record), 201
+
+    @app.get("/api/progress/<client_name>")
+    def list_progress(client_name: str) -> tuple:
+        records = get_progress(client_name)
+        return jsonify({"client_name": client_name,
+                        "sessions": records,
+                        "total": len(records)}), 200
 
     return app
 
