@@ -56,14 +56,43 @@ def calculate_calories(program_code: str, weight_kg: float) -> int | None:
     return int(weight_kg * program["calorie_factor"])
 
 
-# ── v1.1.2: in-memory client store ────────────────────────────────────────────
+# ── v2.0.1: SQLite-backed client store ────────────────────────────────────────
 
-_CLIENTS: list[dict] = []
+import csv
+import io
+import os
+import sqlite3
+
+_DB_PATH = os.environ.get("DB_PATH", "aceest_fitness.db")
+
+
+def _get_conn() -> sqlite3.Connection:
+    conn = sqlite3.connect(_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db(db_path: str | None = None) -> None:
+    """Create the clients table if it does not exist."""
+    path = db_path or _DB_PATH
+    with sqlite3.connect(path) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS clients (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL,
+                age         INTEGER NOT NULL,
+                weight_kg   REAL    NOT NULL,
+                program_code TEXT   NOT NULL,
+                adherence   INTEGER NOT NULL,
+                notes       TEXT    DEFAULT ''
+            )
+        """)
+        conn.commit()
 
 
 def add_client(name: str, age: int, weight_kg: float, program_code: str,
                adherence: int, notes: str = "") -> dict | None:
-    """Add a client record. Returns the record or None if program is invalid."""
+    """Insert a client row. Returns the record dict or None if program is invalid."""
     if get_program_by_code(program_code) is None:
         return None
     record = {
@@ -74,26 +103,36 @@ def add_client(name: str, age: int, weight_kg: float, program_code: str,
         "adherence": max(0, min(100, adherence)),
         "notes": notes,
     }
-    _CLIENTS.append(record)
+    with _get_conn() as conn:
+        conn.execute(
+            "INSERT INTO clients (name, age, weight_kg, program_code, adherence, notes) "
+            "VALUES (:name, :age, :weight_kg, :program_code, :adherence, :notes)",
+            record,
+        )
+        conn.commit()
     return record
 
 
 def get_clients() -> list[dict]:
-    return list(_CLIENTS)
+    with _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT name, age, weight_kg, program_code, adherence, notes FROM clients"
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def get_clients_csv() -> str:
     """Return all clients as a CSV string."""
-    import csv
-    import io
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=["name", "age", "weight_kg", "program_code",
                                               "adherence", "notes"])
     writer.writeheader()
-    writer.writerows(_CLIENTS)
+    writer.writerows(get_clients())
     return buf.getvalue()
 
 
 def clear_clients() -> None:
-    """Clear all clients (used in tests)."""
-    _CLIENTS.clear()
+    """Delete all client rows (used in tests)."""
+    with _get_conn() as conn:
+        conn.execute("DELETE FROM clients")
+        conn.commit()
