@@ -15,6 +15,9 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                script {
+                    env.GIT_COMMIT_SHA = bat(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                }
             }
         }
 
@@ -69,13 +72,19 @@ pipeline {
             githubNotify context: 'Jenkins CI',
                          description: 'All stages passed',
                          status: 'SUCCESS',
-                         credentialsId: 'github-token'
+                         credentialsId: 'github-token',
+                         sha: env.GIT_COMMIT_SHA,
+                         repo: 'devops-assignment',
+                         account: '2025ht66016-cell'
         }
         failure {
             githubNotify context: 'Jenkins CI',
                          description: 'Build failed',
                          status: 'FAILURE',
-                         credentialsId: 'github-token'
+                         credentialsId: 'github-token',
+                         sha: env.GIT_COMMIT_SHA,
+                         repo: 'devops-assignment',
+                         account: '2025ht66016-cell'
         }
     }
 }
