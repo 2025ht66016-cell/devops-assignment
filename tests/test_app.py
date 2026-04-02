@@ -116,7 +116,10 @@ def tmp_db():
     ace._DB_PATH = path
     yield path
     ace._DB_PATH = original
-    os.unlink(path)
+    try:
+        os.unlink(path)
+    except OSError:
+        pass  # Windows may keep the file locked briefly after SQLite closes
 
 
 def test_add_client_returns_201(client):
