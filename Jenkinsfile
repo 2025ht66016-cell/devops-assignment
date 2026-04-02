@@ -62,7 +62,7 @@ pipeline {
 
     post {
         always {
-            junit allowEmptyResults: true, testResults: 'pytest-report.xml'
+            junit allowEmptyResults: true, testResults: 'pytest-report.xml', skipPublishingChecks: true
             cleanWs deleteDirs: true, disableDeferredWipeout: true
         }
         success {
