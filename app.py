@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 
-from src.Aceestver import get_program_by_code, get_programs_summary
+from src.Aceestver import calculate_calories, get_program_by_code, get_programs_summary
 
 
 def create_app() -> Flask:
@@ -124,6 +124,21 @@ def create_app() -> Flask:
         if program is None:
             return jsonify({"error": f"Program '{program_code}' was not found."}), 404
         return jsonify(program), 200
+
+    @app.post("/api/calories")
+    def calories() -> tuple:
+        body = request.get_json(silent=True) or {}
+        program_code = body.get("program_code", "")
+        weight_kg = body.get("weight_kg")
+
+        if not program_code or weight_kg is None:
+            return jsonify({"error": "program_code and weight_kg are required."}), 400
+
+        result = calculate_calories(program_code, weight_kg)
+        if result is None:
+            return jsonify({"error": f"Program '{program_code}' was not found."}), 404
+
+        return jsonify({"program_code": program_code.upper(), "weight_kg": weight_kg, "estimated_calories": result}), 200
 
     return app
 
