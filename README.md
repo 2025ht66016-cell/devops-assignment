@@ -1,4 +1,4 @@
-# ACEest Fitness & Gym
+# ACEest Fitness & Gym 
 
 A Flask-based web application and automated CI/CD pipeline built for the ACEest Fitness & Gym platform. This project demonstrates end-to-end DevOps practices — version control, containerisation, unit testing, and automated pipelines via GitHub Actions and Jenkins.
 
