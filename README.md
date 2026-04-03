@@ -27,6 +27,15 @@ A Flask-based web application and automated CI/CD pipeline built for the ACEest 
 
 ---
 
+**Technologies Used**
+Python (Flask Web Framework)
+Git & GitHub
+Pytest (Automated Testing)
+Docker (Containerization)
+GitHub Actions (Continuous Integration)
+Jenkins (Build Automation)
+
+
 ## Local Setup & Execution
 
 **Prerequisites:** Python 3.12+, pip, Docker
