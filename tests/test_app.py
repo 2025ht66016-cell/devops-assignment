@@ -116,7 +116,10 @@ def tmp_db():
     ace._DB_PATH = path
     yield path
     ace._DB_PATH = original
-    os.unlink(path)
+    try:
+        os.unlink(path)
+    except OSError:
+        pass  # Windows may keep the file locked briefly after SQLite closes
 
 
 def test_add_client_returns_201(client):
@@ -170,3 +173,40 @@ def test_chart_returns_png(client):
 def test_chart_with_no_clients_returns_404(client):
     response = client.get("/api/chart")
     assert response.status_code == 404
+
+
+# ── v2.1.2: Progress / session tracking ──────────────────────────────────────
+
+def test_log_progress_returns_201(client):
+    response = client.post("/api/progress", json={
+        "client_name": "Ravi", "adherence": 85, "week": "Week 01 - 2025"
+    })
+    assert response.status_code == 201
+    payload = response.get_json()
+    assert payload["client_name"] == "Ravi"
+    assert payload["adherence"] == 85
+    assert payload["week"] == "Week 01 - 2025"
+
+
+def test_log_progress_missing_fields_returns_400(client):
+    response = client.post("/api/progress", json={"client_name": "Ravi"})
+    assert response.status_code == 400
+
+
+def test_get_progress_returns_history(client):
+    client.post("/api/progress", json={"client_name": "Priya", "adherence": 70, "week": "Week 01 - 2025"})
+    client.post("/api/progress", json={"client_name": "Priya", "adherence": 90, "week": "Week 02 - 2025"})
+    response = client.get("/api/progress/Priya")
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["total"] == 2
+    assert payload["sessions"][0]["adherence"] == 70
+    assert payload["sessions"][1]["adherence"] == 90
+
+
+def test_get_progress_unknown_client_returns_empty(client):
+    response = client.get("/api/progress/Unknown")
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["total"] == 0
+    assert payload["sessions"] == []

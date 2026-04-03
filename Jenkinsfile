@@ -8,21 +8,24 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'aceest-fitness'
-        PYTHON_BIN = 'python3'
+        PYTHON_BIN = 'python'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
+                script {
+                    env.GIT_COMMIT_SHA = bat(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                }
             }
         }
 
         stage('Setup Environment') {
             steps {
-                sh '''
-                    ${PYTHON_BIN} -m venv .venv
-                    . .venv/bin/activate
+                bat '''
+                    %PYTHON_BIN% -m venv .venv
+                    call .venv\\Scripts\\activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -31,8 +34,8 @@ pipeline {
 
         stage('Lint & Build Validation') {
             steps {
-                sh '''
-                    . .venv/bin/activate
+                bat '''
+                    call .venv\\Scripts\\activate
                     python -m compileall app.py src tests
                     ruff check app.py src tests
                 '''
@@ -41,8 +44,8 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
-                sh '''
-                    . .venv/bin/activate
+                bat '''
+                    call .venv\\Scripts\\activate
                     pytest --junitxml=pytest-report.xml
                 '''
             }
@@ -51,19 +54,41 @@ pipeline {
         stage('Docker Build') {
             when {
                 expression {
-                    sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
+                    bat(script: 'where docker', returnStatus: true) == 0
                 }
             }
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .'
+                bat 'docker build -t %IMAGE_NAME%:%BUILD_NUMBER% .'
             }
         }
     }
 
     post {
         always {
-            junit allowEmptyResults: true, testResults: 'pytest-report.xml'
+            junit allowEmptyResults: true, testResults: 'pytest-report.xml', skipPublishingChecks: true
             cleanWs deleteDirs: true, disableDeferredWipeout: true
+        }
+        success {
+            catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                githubNotify context: 'Jenkins CI',
+                             description: 'All stages passed',
+                             status: 'SUCCESS',
+                             credentialsId: 'github-token',
+                             sha: env.GIT_COMMIT_SHA,
+                             repo: 'devops-assignment',
+                             account: '2025ht66016-cell'
+            }
+        }
+        failure {
+            catchError(buildResult: 'FAILURE', stageResult: 'UNSTABLE') {
+                githubNotify context: 'Jenkins CI',
+                             description: 'Build failed',
+                             status: 'FAILURE',
+                             credentialsId: 'github-token',
+                             sha: env.GIT_COMMIT_SHA,
+                             repo: 'devops-assignment',
+                             account: '2025ht66016-cell'
+            }
         }
     }
 }

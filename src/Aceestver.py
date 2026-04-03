@@ -2,6 +2,7 @@ import csv
 import io
 import os
 import sqlite3
+from datetime import datetime
 
 PROGRAMS = {
     "FL": {
@@ -73,7 +74,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def init_db(db_path: str | None = None) -> None:
-    """Create the clients table if it does not exist."""
+    """Create the clients and progress tables if they do not exist."""
     path = db_path or _DB_PATH
     with sqlite3.connect(path) as conn:
         conn.execute("""
@@ -85,6 +86,14 @@ def init_db(db_path: str | None = None) -> None:
                 program_code TEXT   NOT NULL,
                 adherence   INTEGER NOT NULL,
                 notes       TEXT    DEFAULT ''
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS progress (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                client_name TEXT    NOT NULL,
+                week        TEXT    NOT NULL,
+                adherence   INTEGER NOT NULL
             )
         """)
         conn.commit()
@@ -136,3 +145,32 @@ def clear_clients() -> None:
     with _get_conn() as conn:
         conn.execute("DELETE FROM clients")
         conn.commit()
+
+
+# ── v2.1.2: Progress / session tracking ───────────────────────────────────────
+
+def log_progress(client_name: str, adherence: int,
+                 week: str | None = None) -> dict:
+    """Insert a weekly progress record. Returns the stored record."""
+    week = week or datetime.now().strftime("Week %U - %Y")
+    adherence = max(0, min(100, adherence))
+    record = {"client_name": client_name, "week": week, "adherence": adherence}
+    with _get_conn() as conn:
+        conn.execute(
+            "INSERT INTO progress (client_name, week, adherence) "
+            "VALUES (:client_name, :week, :adherence)",
+            record,
+        )
+        conn.commit()
+    return record
+
+
+def get_progress(client_name: str) -> list[dict]:
+    """Return all progress rows for a client, ordered oldest-first."""
+    with _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT client_name, week, adherence FROM progress "
+            "WHERE client_name=? ORDER BY id ASC",
+            (client_name,),
+        ).fetchall()
+    return [dict(row) for row in rows]
