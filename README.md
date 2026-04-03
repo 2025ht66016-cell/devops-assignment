@@ -35,6 +35,32 @@ Docker (Containerization)
 GitHub Actions (Continuous Integration)
 Jenkins (Build Automation)
 
+**Version Control System (VCS) Strategy**
+
+As part of the assignment, I established a structured branching model to ensure code integrity and professional version tracking:
+
+**Main Branch (main)**  
+Serves as the stable baseline for production-ready code. All validated features and fixes are merged here after passing testing and CI/CD checks.
+
+**Release Branches  **
+Created to manage versioned deliverables and ensure evaluator visibility of incremental progress:
+
+release-1.0 – Initial stable release with core Flask application.
+
+release-1.1 – Enhanced features and minor improvements.
+
+release-1.1.2 – Patch updates addressing small fixes.
+
+release-2.0.1 – Major upgrade with containerization refinements.
+
+release-2.1.2 – Further improvements and pipeline optimizations.
+
+**Test Branch (test) ** 
+Dedicated to experimental changes and validation before merging into release or main.
+
+**Synchronization with GitHub ** 
+Each branch was pushed to the remote repository, ensuring transparency and traceability. Screenshots (attached) demonstrate branch creation, commit history, and remote synchronization.
+
 
 ## Local Setup & Execution
 
